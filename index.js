@@ -3,6 +3,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require('dotenv').config();
 const cors = require("cors");
 const app = express();
+const jwt = require('jsonwebtoken');
 
 const port = process.env.PORT || 5000;
 
@@ -33,7 +34,15 @@ async function run() {
 
     const productCollection = client.db("ogs").collection("product");
     const cartCollection = client.db("ogs").collection("cart");
+    const userCollection = client.db("ogs").collection("user");
 
+
+      // jwt related api
+      app.post('/jwt', async (req, res) => {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+        res.send({ token });
+      })
 
     //------------------ product Releted Api ------------------
 
@@ -111,6 +120,48 @@ async function run() {
       };
       const result = await cartCollection.deleteOne(query);
       console.log(result);
+      res.send(result);
+    });
+
+    //------------------ user Releted Api ------------------
+    app.post('/user', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email }
+      const existingerUser = await userCollection.findOne(query);
+      if (existingerUser) {
+        return res.send({ message: 'user already exists', insertedId: null })
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get('/user', async (req, res){
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete('/user/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      };
+      const result = await userCollection.deleteOne(query);
+      console.log(result);
+      res.send(result);
+    });
+
+    app.put("/user/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        },
+      };
+      const result = await userCollection.updateOne(
+        filter,
+        updatedDoc
+      );
       res.send(result);
     });
 
