@@ -27,7 +27,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    //await client.connect();
 
 
     //Your Code Start Now!!!!!!!!!!!!!!!!!!!!
@@ -49,7 +49,7 @@ async function run() {
     //------------------ middlewares Releted Api ------------------
 
     const verifyToken = (req, res, next) => {
-      console.log('inside verify token', req.heaaders.authorization);
+      console.log('inside verify token', req.headers.authorization);
       if (!req.headers.authorization) {
         return res.status(401).send({ message: 'unauthorized access' });
       }
@@ -62,6 +62,7 @@ async function run() {
         next();
       })
     }
+    
 
     // use verify admin after verifyToken
     const verifyAdmin = async (req, res, next) => {
@@ -219,10 +220,10 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
 
 
   } finally {
