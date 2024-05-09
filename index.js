@@ -34,7 +34,7 @@ async function run() {
 
     const productCollection = client.db("ogs").collection("product");
     const cartCollection = client.db("ogs").collection("cart");
-    const userCollection = client.db("ogs").collection("user");
+    const userCollection = client.db("ogs").collection("users");
 
 
     // //------------------ jwt Releted Api ------------------
@@ -77,7 +77,7 @@ async function run() {
     }
 
     //------------------ user Releted Api ------------------
-    app.post('/user', async (req, res) => {
+    app.post('/users', async (req, res) => {
       const user = req.body;
       const query = { email: user.email }
       const existingerUser = await userCollection.findOne(query);
@@ -88,12 +88,12 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/user', verifyToken, verifyAdmin, async (req, res) => {
+    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.get('/user/admin/:email', verifyToken, async (req, res) => {
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
 
       if (email !== req.decoded.email) {
@@ -110,7 +110,7 @@ async function run() {
       res.send({ admin });
     })
 
-    app.delete('/user/:id', async (req, res) => {
+    app.delete('/users/:id', async (req, res) => {
       const id = req.params.id;
       const query = {
         _id: new ObjectId(id)
@@ -120,7 +120,7 @@ async function run() {
       res.send(result);
     });
 
-    app.put("/user/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.put("/users/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
