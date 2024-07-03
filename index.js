@@ -260,77 +260,69 @@ async function run() {
       res.send(result);
     });
 
-    //------------------ Payment Related API ------------------
+     //------------------ Payment Related API ------------------
 
-    const store_id = process.env.STORE_ID;
-    const store_passwd = process.env.STORE_PASS;
-    const is_live = false; // true for live, false for sandbox
-
-    const tran_id = new ObjectId().toString();
-
-    app.post('/payments', async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const cartItems = await cartCollection.find(query).toArray();
-
-      if (!cartItems.length) {
-        return res.status(400).send({ error: "No items in the cart" });
-      }
-
-      const total_amount = cartItems.reduce((total, item) => total + item.price, 0);
-
-      const locationData = await locationCollection.findOne(query);
-
-      if (!locationData) {
-        return res.status(404).send({ error: "Location data not found" });
-      }
-
-      const data = {
-        total_amount: total_amount,
-        currency: 'BDT',
-        tran_id: tran_id,
-        success_url: 'http://localhost:3030/success',
-        fail_url: 'http://localhost:3030/fail',
-        cancel_url: 'http://localhost:3030/cancel',
-        ipn_url: 'http://localhost:3030/ipn',
-        shipping_method: 'Courier',
-        product_name: cartItems.map(item => item.name).join(', '),
+     app.post('/initiate-payment', async (req, res) => {
+      const { amount, currency, product_name, customer_name, customer_email, customer_phone } = req.body;
+    
+      const tran_id = new ObjectId().toString();
+    
+      const paymentData = {
+        total_amount: amount,
+        currency: currency,
+        tran_id: tran_id, // Use a unique transaction ID for each payment
+        success_url: `https://online-gift-shop-server.vercel.app/payments/success/${tran_id}`,
+        fail_url: 'http://yourdomain.com/fail',
+        cancel_url: 'http://yourdomain.com/cancel',
+        ipn_url: 'http://yourdomain.com/ipn',
+        product_name: product_name,
+        product_category: 'General',
         product_profile: 'general',
-        cus_name: locationData.name,
-        cus_email: email,
-        cus_add1: locationData.address,
-        cus_add2: locationData.address,
-        cus_city: locationData.city,
-        cus_state: locationData.area,
-        cus_postcode: locationData.postcode || '1000',
+        cus_name: customer_name,
+        cus_email: customer_email,
+        cus_add1: 'Customer Address',
+        cus_city: 'Dhaka',
+        cus_postcode: '1000',
         cus_country: 'Bangladesh',
-        cus_phone: locationData.phone,
-        cus_fax: locationData.phone,
-        ship_name: locationData.name,
-        ship_add1: locationData.address,
-        ship_add2: locationData.address,
-        ship_city: locationData.city,
-        ship_state: locationData.area,
-        ship_postcode: locationData.postcode || '1000',
-        ship_country: 'Bangladesh',
+        cus_phone: customer_phone,
+        shipping_method: 'NO',
+        num_of_item: 1,
+        product_profile: 'general',
       };
-
-      const paymentRecord = {
-        email: email,
-        tran_id: tran_id,
-        amount: total_amount,
-        status: 'Pending', // Initial status
-        created_at: new Date()
-      };
-
-      await paymentCollection.insertOne(paymentRecord);
-
-      const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then(apiResponse => {
+    
+      const sslcz = new SSLCommerzPayment(process.env.STORE_ID, process.env.STORE_PASS, false);
+      sslcz.init(paymentData).then(apiResponse => {
+        // Redirect the user to SSLCommerz payment page
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
-        console.log('Redirecting to: ', GatewayPageURL);
       });
+    });
+    
+
+    app.post('/payments/success/:tran_id', async (req, res) => {
+      const paymentInfo = req.body;
+      const tran_id = req.params.tran_id;
+    
+      // Optionally, you can add additional validation or processing based on the transaction ID
+      const result = await paymentCollection.insertOne({ ...paymentInfo, tran_id });
+      res.send(result);
+    });
+    
+
+    app.post('/fail', async (req, res) => {
+      const paymentInfo = req.body;
+      res.status(400).send(paymentInfo);
+    });
+
+    app.post('/cancel', async (req, res) => {
+      const paymentInfo = req.body;
+      res.status(400).send(paymentInfo);
+    });
+
+    app.post('/ipn', async (req, res) => {
+      const paymentInfo = req.body;
+      const result = await paymentCollection.insertOne(paymentInfo);
+      res.send(result);
     });
 
     app.get("/", (req, res) => {
