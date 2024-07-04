@@ -37,6 +37,7 @@ async function run() {
     const userCollection = client.db("ogs").collection("users");
     const locationCollection = client.db("ogs").collection("location");
     const paymentCollection = client.db("ogs").collection("payments");
+    const orderCollection = client.db("ogs").collection("manageorder");
 
     //------------------ JWT Related API ------------------
 
@@ -260,6 +261,19 @@ async function run() {
       res.send(result);
     });
 
+    //------------------ Mange Order Related API ------------------
+
+    app.post('/manageorder', async (req, res) => {
+      const orderProduct = req.body;
+      const result = await orderCollection.insertOne(orderProduct);
+      res.send(result);
+    });
+
+    app.get('/manageorder', async (req, res) => {
+      const result = await orderCollection.find().toArray();
+      res.send(result);
+    });
+
      //------------------ Payment Related API ------------------
 
      app.post('/initiate-payment', async (req, res) => {
@@ -272,6 +286,7 @@ async function run() {
         currency: currency,
         tran_id: tran_id, // Use a unique transaction ID for each payment
         success_url: `https://online-gift-shop-server.vercel.app/payments/success/${tran_id}`,
+        // success_url: `http://localhost:5000/payments/success/${tran_id}`,
         fail_url: 'http://yourdomain.com/fail',
         cancel_url: 'http://yourdomain.com/cancel',
         ipn_url: 'http://yourdomain.com/ipn',
@@ -289,6 +304,8 @@ async function run() {
         num_of_item: 1,
         product_profile: 'general',
       };
+
+      console.log(paymentData);
     
       const sslcz = new SSLCommerzPayment(process.env.STORE_ID, process.env.STORE_PASS, false);
       sslcz.init(paymentData).then(apiResponse => {
@@ -332,6 +349,12 @@ async function run() {
     app.listen(port, () => {
       console.log(`Simple Crud is Running on port ${port}`);
     });
+
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
 
   } finally {
     // Ensures that the client will close when you finish/error
