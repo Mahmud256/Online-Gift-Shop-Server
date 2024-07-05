@@ -13,6 +13,7 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 app.use(cors({
   origin: [
     'http://localhost:5173',
+    'https://online-gift-shop-a4212.web.app',
     'https://online-gift-shop.netlify.app'
   ],
   credentials: true
@@ -326,7 +327,7 @@ async function run() {
       // Redirect to the frontend payment success page
       //  res.redirect(`https://your-frontend-app.com/payments/success/${tran_id}`);
       // For local development, you can use:
-      res.redirect(`https://online-gift-shop.netlify.app/payments/success/${tran_id}`);
+      res.redirect(`https://online-gift-shop-a4212.web.app/payments/success/${tran_id}`);
     });
     
     
