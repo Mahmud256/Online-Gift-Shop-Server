@@ -322,8 +322,13 @@ async function run() {
     
       // Optionally, you can add additional validation or processing based on the transaction ID
       const result = await paymentCollection.insertOne({ ...paymentInfo, tran_id });
-      res.send(result);
+    
+      // Redirect to the frontend payment success page
+      //  res.redirect(`https://your-frontend-app.com/payments/success/${tran_id}`);
+      // For local development, you can use:
+      res.redirect(`https://online-gift-shop.netlify.app/payments/success/${tran_id}`);
     });
+    
     
 
     app.post('/fail', async (req, res) => {
@@ -351,10 +356,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
 
   } finally {
     // Ensures that the client will close when you finish/error
