@@ -5,6 +5,8 @@ const cors = require("cors");
 const app = express();
 const SSLCommerzPayment = require('sslcommerz-lts');
 const jwt = require('jsonwebtoken');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
 
 const port = process.env.PORT || 5000;
 
@@ -275,19 +277,17 @@ async function run() {
       res.send(result);
     });
 
-     //------------------ Payment Related API ------------------
+    //------------------ Payment Related API ------------------
 
-     app.post('/initiate-payment', async (req, res) => {
+    app.post('/initiate-payment', async (req, res) => {
       const { amount, currency, product_name, customer_name, customer_email, customer_phone } = req.body;
-    
       const tran_id = new ObjectId().toString();
     
       const paymentData = {
         total_amount: amount,
         currency: currency,
-        tran_id: tran_id, // Use a unique transaction ID for each payment
+        tran_id: tran_id,
         success_url: `https://online-gift-shop-server.vercel.app/payments/success/${tran_id}`,
-        // success_url: `http://localhost:5000/payments/success/${tran_id}`,
         fail_url: 'http://yourdomain.com/fail',
         cancel_url: 'http://yourdomain.com/cancel',
         ipn_url: 'http://yourdomain.com/ipn',
@@ -303,34 +303,40 @@ async function run() {
         cus_phone: customer_phone,
         shipping_method: 'NO',
         num_of_item: 1,
-        product_profile: 'general',
       };
-
-      console.log(paymentData);
+    
+      // Save basic info before redirection
+      await paymentCollection.insertOne({
+        tran_id,
+        total_amount: amount,
+        cus_name: customer_name,
+        cus_email: customer_email,
+        status: 'Pending',
+        createdAt: new Date(),
+      });
     
       const sslcz = new SSLCommerzPayment(process.env.STORE_ID, process.env.STORE_PASS, false);
       sslcz.init(paymentData).then(apiResponse => {
-        // Redirect the user to SSLCommerz payment page
-        let GatewayPageURL = apiResponse.GatewayPageURL;
-        res.send({ url: GatewayPageURL });
+        res.send({ url: apiResponse.GatewayPageURL });
       });
     });
     
 
+
+
     app.post('/payments/success/:tran_id', async (req, res) => {
-      const paymentInfo = req.body;
       const tran_id = req.params.tran_id;
     
-      // Optionally, you can add additional validation or processing based on the transaction ID
-      const result = await paymentCollection.insertOne({ ...paymentInfo, tran_id });
+      const result = await paymentCollection.updateOne(
+        { tran_id },
+        { $set: { status: 'Success', successAt: new Date() } }
+      );
     
-      // Redirect to the frontend payment success page
-      //  res.redirect(`https://your-frontend-app.com/payments/success/${tran_id}`);
-      // For local development, you can use:
       res.redirect(`https://online-gift-shop-a4212.web.app/payments/success/${tran_id}`);
     });
     
-    
+
+
 
     app.post('/fail', async (req, res) => {
       const paymentInfo = req.body;
@@ -347,6 +353,34 @@ async function run() {
       const result = await paymentCollection.insertOne(paymentInfo);
       res.send(result);
     });
+
+
+    app.get('/receipt/:tran_id', async (req, res) => {
+      const tran_id = req.params.tran_id;
+      const payment = await paymentCollection.findOne({ tran_id });
+
+      if (!payment) {
+        return res.status(404).send({ message: 'Payment not found' });
+      }
+
+      const doc = new PDFDocument();
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=receipt-${tran_id}.pdf`);
+
+      doc.pipe(res);
+
+      // Content
+      doc.fontSize(20).text('Payment Receipt', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(14).text(`Transaction ID: ${tran_id}`);
+      doc.text(`Amount: ${payment.total_amount}`);
+      doc.text(`Name: ${payment.cus_name}`);
+      doc.text(`Email: ${payment.cus_email}`);
+      doc.text(`Date: ${new Date().toLocaleString()}`);
+      doc.end(); // Finalize the PDF and send
+    });
+
 
     app.get("/", (req, res) => {
       res.send("Crud is running...");
