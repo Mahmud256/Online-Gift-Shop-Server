@@ -264,16 +264,45 @@ async function run() {
       res.send(result);
     });
 
-    //------------------ Mange Order Related API ------------------
+    //------------------ Manage Order Related API ------------------
 
+    // ✅ Insert a new order (default product status: Pending)
     app.post('/manageorder', async (req, res) => {
       const orderProduct = req.body;
+
+      // Ensure each product has an ObjectId and a status field
+      orderProduct.cart = orderProduct.cart.map(product => ({
+        ...product,
+        _id: new ObjectId(),
+        status: "Pending"
+      }));
+
       const result = await orderCollection.insertOne(orderProduct);
       res.send(result);
     });
 
+    // ✅ Get all orders
     app.get('/manageorder', async (req, res) => {
       const result = await orderCollection.find().toArray();
+      res.send(result);
+    });
+
+    // ✅ Get one order
+    app.get('/manageorder/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await orderCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.patch('/manageorder/:orderId/product/:productId', async (req, res) => {
+      const { orderId, productId } = req.params;
+      const { status } = req.body; // { status: "Completed" }
+
+      const filter = { _id: new ObjectId(orderId), "cart._id": new ObjectId(productId) };
+      const updateDoc = { $set: { "cart.$.status": status } };
+
+      const result = await orderCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
@@ -282,7 +311,7 @@ async function run() {
     app.post('/initiate-payment', async (req, res) => {
       const { amount, currency, product_name, customer_name, customer_email, customer_phone } = req.body;
       const tran_id = new ObjectId().toString();
-    
+
       const paymentData = {
         total_amount: amount,
         currency: currency,
@@ -304,7 +333,7 @@ async function run() {
         shipping_method: 'NO',
         num_of_item: 1,
       };
-    
+
       // Save basic info before redirection
       await paymentCollection.insertOne({
         tran_id,
@@ -314,27 +343,27 @@ async function run() {
         status: 'Pending',
         createdAt: new Date(),
       });
-    
+
       const sslcz = new SSLCommerzPayment(process.env.STORE_ID, process.env.STORE_PASS, false);
       sslcz.init(paymentData).then(apiResponse => {
         res.send({ url: apiResponse.GatewayPageURL });
       });
     });
-    
+
 
 
 
     app.post('/payments/success/:tran_id', async (req, res) => {
       const tran_id = req.params.tran_id;
-    
+
       const result = await paymentCollection.updateOne(
         { tran_id },
         { $set: { status: 'Success', successAt: new Date() } }
       );
-    
+
       res.redirect(`https://online-gift-shop-a4212.web.app/payments/success/${tran_id}`);
     });
-    
+
 
 
 
