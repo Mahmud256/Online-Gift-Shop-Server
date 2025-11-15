@@ -316,7 +316,7 @@ async function run() {
         total_amount: amount,
         currency: currency,
         tran_id: tran_id,
-        success_url: `https://online-gift-shop-server.vercel.app/payments/success/${tran_id}`,
+        success_url: `${process.env.backend_url}/payments/success/${tran_id}`,
         fail_url: 'http://yourdomain.com/fail',
         cancel_url: 'http://yourdomain.com/cancel',
         ipn_url: 'http://yourdomain.com/ipn',
@@ -362,6 +362,29 @@ async function run() {
       );
 
       res.redirect(`https://online-gift-shop-a4212.web.app/payments/success/${tran_id}`);
+    });
+
+
+    // ------------------ Payment History API ------------------
+
+    app.get('/payments', verifyToken, async (req, res) => {
+      const email = req.query.email;
+
+      if (!email) {
+        return res.status(400).send({ message: 'Email is required' });
+      }
+
+      // Logged-in user email check
+      if (req.decoded.email !== email) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+
+      const history = await paymentCollection
+        .find({ cus_email: email })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(history);
     });
 
 
